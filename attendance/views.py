@@ -11,6 +11,7 @@ from reportlab.pdfgen import canvas  # Import canvas for generating PDFs
 from reportlab.lib.pagesizes import letter
 from django.db.models import Count
 from datetime import date
+from .models import Attendance, Student
 
 
 # Create your views here.
@@ -107,66 +108,45 @@ def attendance_report(request):
     })
 
 def generate_attendance_pdf(request):
-    students = Student.objects.all()
-    attendance_records = AttendanceMark.objects.all()
+    start_date = request.GET.get("start_date")
+    end_date = request.GET.get("end_date")
+    student_id = request.GET.get("student")
 
-    # Get filter parameters
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    student_id = request.GET.get('student')
+    queryset = Attendance.objects.all()
 
-    if start_date and end_date:
-        attendance_records = attendance_records.filter(date__range=[start_date, end_date])
+    # ✅ SAFETY CHECKS (this fixes your error)
+    if start_date and start_date != "None":
+        queryset = queryset.filter(date__gte=start_date)
 
-    if student_id and student_id != "":
-        attendance_records = attendance_records.filter(student__sid=student_id)
-        students = students.filter(sid=student_id)  # Limit to one student
+    if end_date and end_date != "None":
+        queryset = queryset.filter(date__lte=end_date)
 
-    # Calculate attendance percentage
-    student_attendance = {}
-    for student in students:
-        total_classes = attendance_records.filter(student=student).count()
-        present_count = attendance_records.filter(student=student, status="Present").count()
-        attendance_percentage = (present_count / total_classes * 100) if total_classes > 0 else 0
-        student_attendance[student] = attendance_percentage
+    if student_id and student_id != "None":
+        queryset = queryset.filter(student__id=student_id)
 
     # Create PDF response
-    response = HttpResponse(content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename="attendance_report.pdf"'
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = 'attachment; filename="attendance_report.pdf"'
 
-    p = canvas.Canvas(response, pagesize=letter)
-    width, height = letter
-
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(180, height - 40, "Attendance Report")
-
-    p.setFont("Helvetica-Bold", 12)
-    p.drawString(50, height - 80, "Student ID")
-    p.drawString(120, height - 80, "Name")
-    p.drawString(250, height - 80, "Date")
-    p.drawString(350, height - 80, "Status")
-    p.drawString(450, height - 80, "Attendance %")
-
-    y = height - 100
+    p = canvas.Canvas(response)
     p.setFont("Helvetica", 10)
 
-    for record in attendance_records.order_by('student__sid', 'date'):
-        student = record.student
-        percentage = student_attendance.get(student, 0)
-        
-        p.drawString(50, y, str(student.sid))
-        p.drawString(120, y, student.student_name)
-        p.drawString(250, y, record.date.strftime("%Y-%m-%d"))
-        p.drawString(350, y, record.status)
-        p.drawString(450, y, f"{percentage:.2f}%")
-        y -= 20
+    y = 800
+    p.drawString(50, y, "Attendance Report")
+    y -= 30
 
-        if y < 50:  # If page is full, add a new page
+    for record in queryset:
+        line = f"{record.student.student_name} | {record.date} | {record.status}"
+        p.drawString(50, y, line)
+        y -= 20
+        if y < 50:
             p.showPage()
             p.setFont("Helvetica", 10)
-            y = height - 50
+            y = 800
 
+    p.showPage()
     p.save()
+
     return response
 
 
