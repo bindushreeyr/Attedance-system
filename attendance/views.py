@@ -112,7 +112,7 @@ def generate_attendance_pdf(request):
     end_date = request.GET.get("end_date")
     student_id = request.GET.get("student")
 
-    queryset = Attendance.objects.all()
+    queryset = AttendanceMark.objects.all()
 
     # ✅ SAFETY CHECKS (this fixes your error)
     if start_date and start_date != "None":
