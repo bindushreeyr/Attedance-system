@@ -11,7 +11,7 @@ from reportlab.pdfgen import canvas  # Import canvas for generating PDFs
 from reportlab.lib.pagesizes import letter
 from django.db.models import Count
 from datetime import date
-from .models import Attendance, Student
+
 
 
 # Create your views here.
