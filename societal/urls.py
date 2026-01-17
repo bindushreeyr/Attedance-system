@@ -1,0 +1,14 @@
+from django.contrib import admin
+from django.urls import path, include
+from django.shortcuts import redirect
+from django.urls import reverse
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+
+    # 🔥 THIS LINE CONNECTS THE ATTENDANCE APP
+    path("attendance/", include("attendance.urls")),
+
+    # 🔁 ROOT → STUDENT DASHBOARD
+    path("", lambda request: redirect(reverse("student_dashboard"))),
+]
