@@ -12,3 +12,7 @@ urlpatterns = [
     # 🔁 ROOT → STUDENT DASHBOARD
     path("", lambda request: redirect(reverse("student_dashboard"))),
 ]
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
