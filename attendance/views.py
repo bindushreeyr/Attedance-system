@@ -107,6 +107,12 @@ def attendance_report(request):
         'selected_student_id': student_id
     })
 
+from django.http import HttpResponse
+from reportlab.pdfgen import canvas
+from collections import defaultdict
+from .models import AttendanceMark
+
+
 def generate_attendance_pdf(request):
     start_date = request.GET.get("start_date")
     end_date = request.GET.get("end_date")
@@ -114,7 +120,7 @@ def generate_attendance_pdf(request):
 
     queryset = AttendanceMark.objects.all()
 
-    # ✅ SAFETY CHECKS (this fixes your error)
+    # ---- Filters ----
     if start_date and start_date != "None":
         queryset = queryset.filter(date__gte=start_date)
 
@@ -124,30 +130,86 @@ def generate_attendance_pdf(request):
     if student_id and student_id != "None":
         queryset = queryset.filter(student__id=student_id)
 
-    # Create PDF response
+    # ---- Attendance Percentage Calculation ----
+    attendance_summary = defaultdict(lambda: {"present": 0, "total": 0})
+
+    for record in queryset:
+        attendance_summary[record.student.student_name]["total"] += 1
+        if record.status == "Present":
+            attendance_summary[record.student.student_name]["present"] += 1
+
+    # ---- Create PDF ----
     response = HttpResponse(content_type="application/pdf")
     response["Content-Disposition"] = 'attachment; filename="attendance_report.pdf"'
 
     p = canvas.Canvas(response)
-    p.setFont("Helvetica", 10)
+    p.setFont("Helvetica-Bold", 14)
 
     y = 800
     p.drawString(50, y, "Attendance Report")
     y -= 30
 
+    # =======================
+    # TABLE 1: ATTENDANCE RECORDS
+    # =======================
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "Attendance Records")
+    y -= 20
+
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(50, y, "Student Name")
+    p.drawString(220, y, "Date")
+    p.drawString(350, y, "Status")
+    y -= 15
+
+    p.setFont("Helvetica", 10)
+
     for record in queryset:
-        line = f"{record.student.student_name} | {record.date} | {record.status}"
-        p.drawString(50, y, line)
-        y -= 20
-        if y < 50:
+        p.drawString(50, y, record.student.student_name)
+        p.drawString(220, y, record.date.strftime("%b %d, %Y"))
+        p.drawString(350, y, record.status)
+        y -= 15
+
+        if y < 80:
             p.showPage()
             p.setFont("Helvetica", 10)
             y = 800
 
+    # =======================
+    # TABLE 2: ATTENDANCE PERCENTAGE
+    # =======================
     p.showPage()
-    p.save()
+    y = 800
 
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, "Attendance Percentage")
+    y -= 20
+
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(50, y, "Student Name")
+    p.drawString(250, y, "Attendance %")
+    y -= 15
+
+    p.setFont("Helvetica", 10)
+
+    for student, data in attendance_summary.items():
+        if data["total"] > 0:
+            percentage = (data["present"] / data["total"]) * 100
+        else:
+            percentage = 0
+
+        p.drawString(50, y, student)
+        p.drawString(250, y, f"{percentage:.2f}%")
+        y -= 15
+
+        if y < 80:
+            p.showPage()
+            p.setFont("Helvetica", 10)
+            y = 800
+
+    p.save()
     return response
+
 
 
 
