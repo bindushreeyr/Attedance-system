@@ -26,7 +26,8 @@ SECRET_KEY = "django-insecure-=a!ye5l7ahx^5do+$$9#xe!jaa*z8iwkd)^+x=oj(ucgtwvr$u
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    "attedance-system.onrender.com",
+    "attedance-system-2.onrender.com",
+    ".onrender.com",
     "localhost",
     "127.0.0.1",
 ]
